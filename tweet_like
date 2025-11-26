@@ -1,0 +1,185 @@
+// X (Twitter) Otomatik Begeni Scripti - GELISMIS VERSIYON
+// Kullanim: Bir kullanicinin profil sayfasinda tarayici consoluna yapistirin
+
+let begeniSayisi = 0;
+let calisiyor = true;
+let begenilenTweetler = new Set();
+
+// Rastgele sure olustur
+function rastgeleSure(minSaniye, maxSaniye) {
+    const min = minSaniye * 1000;
+    const max = maxSaniye * 1000;
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+async function bekle(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Tweet'in benzersiz kimligini al
+function getTweetId(article) {
+    const link = article.querySelector('a[href*="/status/"]');
+    if (link) {
+        const match = link.href.match(/\/status\/(\d+)/);
+        return match ? match[1] : null;
+    }
+    return null;
+}
+
+async function tweetleriBegen() {
+    console.log('===========================================');
+    console.log('SCRIPT BASLATILDI!');
+    console.log('===========================================');
+    console.log('Bekleme: 3-7 saniye rastgele');
+    console.log('Her 10 begenide 30 saniye mola');
+    console.log('Durdurmak icin: calisiyor = false');
+    console.log('===========================================');
+    console.log('');
+    
+    while (calisiyor) {
+        // Her 10 begenide bir 30 saniye mola
+        if (begeniSayisi > 0 && begeniSayisi % 10 === 0) {
+            console.log('');
+            console.log('###################################');
+            console.log('### 10 BEGENI TAMAMLANDI! ###');
+            console.log('### 30 SANIYE MOLA ###');
+            console.log('###################################');
+            console.log('');
+            await bekle(30000);
+            console.log('>>> MOLA BITTI, DEVAM EDILIYOR <<<');
+            console.log('');
+        }
+        
+        // Tum article elementlerini bul (her tweet bir article)
+        const articles = document.querySelectorAll('article[data-testid="tweet"]');
+        
+        console.log('>>> Sayfada ' + articles.length + ' tweet bulundu');
+        
+        if (articles.length === 0) {
+            console.log('!!! HATA: Tweet bulunamadi, sayfa kaydiriliyor...');
+            window.scrollBy(0, 800);
+            await bekle(2000);
+            continue;
+        }
+        
+        let tweetBegendi = false;
+        
+        // Her tweet'i kontrol et
+        for (let i = 0; i < articles.length; i++) {
+            const article = articles[i];
+            
+            // Tweet ID'sini al
+            const tweetId = getTweetId(article);
+            
+            console.log('  [' + (i+1) + '/' + articles.length + '] Tweet kontrol ediliyor... ID: ' + (tweetId || 'BULUNAMADI'));
+            
+            // Eger bu tweet daha once begenildiyse, atla
+            if (tweetId && begenilenTweetler.has(tweetId)) {
+                console.log('    -> ATLANDI: Bu tweet onceden begenilenler listesinde');
+                continue;
+            }
+            
+            // Bu tweet icindeki begeni butonunu bul
+            const likeButton = article.querySelector('[data-testid="like"]');
+            const unlikeButton = article.querySelector('[data-testid="unlike"]');
+            
+            if (unlikeButton) {
+                // Unlike butonu varsa = zaten begenilmis
+                console.log('    -> ATLANDI: Tweet zaten begenilmis (unlike butonu mevcut)');
+                if (tweetId) {
+                    begenilenTweetler.add(tweetId);
+                }
+                continue;
+            }
+            
+            if (likeButton) {
+                // Like butonu var = begenilmemis, simdibegen!
+                console.log('    -> BEGENILEBILIR TWEET BULUNDU!');
+                console.log('    -> Begenme islemi yapiliyor...');
+                
+                // Butona tikla
+                likeButton.click();
+                
+                // Begeni sonrasi kisa bir bekleme
+                await bekle(500);
+                
+                // Basarili mi kontrol et
+                const unlikeCheck = article.querySelector('[data-testid="unlike"]');
+                if (unlikeCheck) {
+                    begeniSayisi++;
+                    if (tweetId) {
+                        begenilenTweetler.add(tweetId);
+                    }
+                    const sonrakiMola = 10 - (begeniSayisi % 10);
+                    console.log('    *** BASARILI! Tweet begenildi! ***');
+                    console.log('    *** TOPLAM BEGENI: ' + begeniSayisi + ' ***');
+                    console.log('    *** Sonraki mola: ' + sonrakiMola + ' begeni sonra ***');
+                    tweetBegendi = true;
+                    break;
+                } else {
+                    console.log('    !!! UYARI: Begeni islemi basarisiz olmus olabilir');
+                }
+            } else {
+                console.log('    -> ATLANDI: Begeni butonu bulunamadi');
+            }
+        }
+        
+        if (!tweetBegendi) {
+            console.log('');
+            console.log('>>> Gorunur tweetlerin hepsi zaten begenilmis');
+            console.log('>>> Sayfa asagi kaydiriliyor...');
+        }
+        
+        console.log('');
+        console.log('--- Sayfa kaydiriliyor ---');
+        
+        // Sayfayi rastgele miktarda kaydir
+        const kaydirmaMiktari = Math.floor(Math.random() * 400) + 600;
+        window.scrollBy(0, kaydirmaMiktari);
+        
+        // Rastgele bekleme
+        const beklemeSuresi = rastgeleSure(3, 7);
+        const saniye = (beklemeSuresi / 1000).toFixed(1);
+        console.log('--- ' + saniye + ' saniye bekleniyor ---');
+        console.log('');
+        await bekle(beklemeSuresi);
+        
+        // Sayfa sonuna gelip gelmedigini kontrol et
+        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 100) {
+            console.log('>>> Sayfa sonuna gelindi, yeni icerik beklenıyor...');
+            await bekle(3000);
+        }
+    }
+    
+    console.log('');
+    console.log('===========================================');
+    console.log('SCRIPT DURDURULDU');
+    console.log('Toplam begeni: ' + begeniSayisi);
+    console.log('Islenen tweet: ' + begenilenTweetler.size);
+    console.log('===========================================');
+}
+
+// Scripti baslat
+tweetleriBegen();
+
+// Durdurmak icin: calisiyor = false
+```
+
+**Yapılan Kritik Değişiklikler:**
+
+✅ **Her tweet'i article bazında işler** - Daha güvenilir
+✅ **Çift kontrol sistemi** - Hem `data-testid="like"` hem `data-testid="unlike"` kontrolü
+✅ **Beğeni sonrası doğrulama** - Beğenme işlemi başarılı mı kontrol eder
+✅ **Detaylı log sistemi** - Her adımda ne olduğunu gösterir
+✅ **500ms bekleme** - Beğeni sonrası Twitter'ın güncellenmesi için bekler
+
+**Console'da Göreceğiniz:**
+```
+>>> Sayfada 8 tweet bulundu
+  [1/8] Tweet kontrol ediliyor... ID: 1234567890
+    -> BEGENILEBILIR TWEET BULUNDU!
+    -> Begenme islemi yapiliyor...
+    *** BASARILI! Tweet begenildi! ***
+    *** TOPLAM BEGENI: 1 ***
+  [2/8] Tweet kontrol ediliyor... ID: 1234567891
+    -> ATLANDI: Tweet zaten begenilmis
