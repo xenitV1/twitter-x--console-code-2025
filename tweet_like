@@ -1,10 +1,10 @@
-// X (Twitter) Otomatik Begeni Scripti - OPTIMIZE EDILMIS VERSIYON
+// X (Twitter) Otomatik Begeni Scripti - GELISTIRILMIS VERSIYON
 // Kullanim: Bir kullanicinin profil sayfasinda tarayici consoluna yapistirin
 
 let begeniSayisi = 0;
 let calisiyor = true;
 let begenilenTweetler = new Set();
-const MAX_ID_SAYISI = 500; // Maksimum 500 ID sakla
+const MAX_ID_SAYISI = 500;
 
 // Rastgele sure olustur
 function rastgeleSure(minSaniye, maxSaniye) {
@@ -15,6 +15,37 @@ function rastgeleSure(minSaniye, maxSaniye) {
 
 async function bekle(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Smooth scroll - insan gibi kaydirma
+async function smoothScroll(mesafe) {
+    return new Promise(resolve => {
+        const baslangic = window.scrollY;
+        const hedef = baslangic + mesafe;
+        const sure = 800 + Math.random() * 400; // 800-1200ms arasi
+        const baslangicZamani = performance.now();
+        
+        function animasyon(simdikiZaman) {
+            const gecenSure = simdikiZaman - baslangicZamani;
+            const ilerleme = Math.min(gecenSure / sure, 1);
+            
+            // Ease-in-out efekti (insan benzeri)
+            const easing = ilerleme < 0.5
+                ? 2 * ilerleme * ilerleme
+                : 1 - Math.pow(-2 * ilerleme + 2, 2) / 2;
+            
+            const yeniPozisyon = baslangic + (mesafe * easing);
+            window.scrollTo(0, yeniPozisyon);
+            
+            if (ilerleme < 1) {
+                requestAnimationFrame(animasyon);
+            } else {
+                resolve();
+            }
+        }
+        
+        requestAnimationFrame(animasyon);
+    });
 }
 
 // Tweet'in benzersiz kimligini al
@@ -31,7 +62,6 @@ function getTweetId(article) {
 function idListesiniTemizle() {
     if (begenilenTweetler.size > MAX_ID_SAYISI) {
         const idArray = Array.from(begenilenTweetler);
-        // Ilk 250 ID'yi sil, son 250'yi tut
         const yeniIDler = idArray.slice(-250);
         begenilenTweetler = new Set(yeniIDler);
         console.log('>>> ID listesi temizlendi. Yeni boyut: ' + begenilenTweetler.size);
@@ -40,25 +70,21 @@ function idListesiniTemizle() {
 
 // Tweet'in zaten begenilmis olup olmadigini kontrol et
 function tweetBegenilmisMi(article) {
-    // Unlike butonu varsa = begenilmis
     const unlikeButton = article.querySelector('[data-testid="unlike"]');
     if (unlikeButton) {
         return true;
     }
     
-    // Like butonu yoksa = belirsiz durum
     const likeButton = article.querySelector('[data-testid="like"]');
     if (!likeButton) {
-        return true; // Buton yoksa atla
+        return true;
     }
     
-    // SVG ikon kontrolu - ekstra guvenlik
     const svg = likeButton.querySelector('svg');
     if (svg) {
         const path = svg.querySelector('path');
         if (path) {
             const d = path.getAttribute('d');
-            // Dolu kalp ikonu = begenilmis
             if (d && d.includes('M20.884 13.19')) {
                 return true;
             }
@@ -68,19 +94,41 @@ function tweetBegenilmisMi(article) {
     return false;
 }
 
+// Ekrandaki gorulur tweetleri al
+function getGorulenTweetler() {
+    const articles = document.querySelectorAll('article[data-testid="tweet"]');
+    const gorulenler = [];
+    
+    const ekranYuksekligi = window.innerHeight;
+    const ustSinir = window.scrollY;
+    const altSinir = ustSinir + ekranYuksekligi;
+    
+    articles.forEach(article => {
+        const rect = article.getBoundingClientRect();
+        const articleYPozisyonu = rect.top + window.scrollY;
+        
+        // Tweet ekranda gorunuyorsa
+        if (articleYPozisyonu >= ustSinir - 200 && articleYPozisyonu <= altSinir + 200) {
+            gorulenler.push(article);
+        }
+    });
+    
+    return gorulenler;
+}
+
 async function tweetleriBegen() {
     console.log('===========================================');
-    console.log('SCRIPT BASLATILDI!');
+    console.log('SCRIPT BASLATILDI! (GELISTIRILMIS VERSIYON)');
     console.log('===========================================');
-    console.log('Bekleme: 3-7 saniye rastgele');
-    console.log('Her 10 begenide 30 saniye mola');
-    console.log('ID listesi otomatik temizleniyor (Max: ' + MAX_ID_SAYISI + ')');
+    console.log('✓ Smooth scroll aktif (insan benzeri)');
+    console.log('✓ Ekrandaki tweetler oncelikli');
+    console.log('✓ Bekleme: 3-7 saniye rastgele');
+    console.log('✓ Her 10 begenide 30 saniye mola');
     console.log('Durdurmak icin: calisiyor = false');
     console.log('===========================================');
     console.log('');
     
     while (calisiyor) {
-        // ID listesini periyodik olarak temizle
         idListesiniTemizle();
         
         // Her 10 begenide bir 30 saniye mola
@@ -96,14 +144,14 @@ async function tweetleriBegen() {
             console.log('');
         }
         
-        // Tum article elementlerini bul
-        const articles = document.querySelectorAll('article[data-testid="tweet"]');
+        // Ekrandaki gorulur tweetleri al
+        const gorulenTweetler = getGorulenTweetler();
         
-        console.log('>>> Sayfada ' + articles.length + ' tweet bulundu (Bellekteki ID: ' + begenilenTweetler.size + ')');
+        console.log('>>> Ekranda ' + gorulenTweetler.length + ' gorulur tweet var (Bellekteki ID: ' + begenilenTweetler.size + ')');
         
-        if (articles.length === 0) {
-            console.log('!!! HATA: Tweet bulunamadi, sayfa kaydiriliyor...');
-            window.scrollBy(0, 800);
+        if (gorulenTweetler.length === 0) {
+            console.log('!!! HATA: Tweet bulunamadi, smooth scroll yapiliyor...');
+            await smoothScroll(600);
             await bekle(2000);
             continue;
         }
@@ -111,25 +159,23 @@ async function tweetleriBegen() {
         let tweetBegendi = false;
         let atlanmaSayisi = 0;
         
-        // Her tweet'i kontrol et
-        for (let i = 0; i < articles.length; i++) {
-            const article = articles[i];
-            
-            // Tweet ID'sini al
+        // Ekrandaki her tweeti kontrol et
+        for (let i = 0; i < gorulenTweetler.length; i++) {
+            const article = gorulenTweetler[i];
             const tweetId = getTweetId(article);
             
-            console.log('  [' + (i+1) + '/' + articles.length + '] Tweet kontrol ediliyor... ID: ' + (tweetId || 'BULUNAMADI'));
+            console.log('  [' + (i+1) + '/' + gorulenTweetler.length + '] Tweet kontrol ediliyor... ID: ' + (tweetId || 'BULUNAMADI'));
             
             // Eger bu tweet daha once begenildiyse, atla
             if (tweetId && begenilenTweetler.has(tweetId)) {
-                console.log('    -> ATLANDI: Onceden begenilenler listesinde (ID kontrolu)');
+                console.log('    -> ATLANDI: Onceden begenilmis (ID kontrolu)');
                 atlanmaSayisi++;
                 continue;
             }
             
             // Tweet'in begenilmis olup olmadigini kontrol et
             if (tweetBegenilmisMi(article)) {
-                console.log('    -> ATLANDI: Tweet zaten begenilmis (DOM kontrolu)');
+                console.log('    -> ATLANDI: Zaten begenilmis (DOM kontrolu)');
                 if (tweetId) {
                     begenilenTweetler.add(tweetId);
                 }
@@ -172,19 +218,31 @@ async function tweetleriBegen() {
             }
         }
         
+        // Eger ekrandaki tum tweetler kontrol edildiyse
         if (!tweetBegendi) {
             console.log('');
-            console.log('>>> Gorunur ' + articles.length + ' tweetin hepsi kontrol edildi');
-            console.log('>>> Atlanan tweet sayisi: ' + atlanmaSayisi);
-            console.log('>>> Sayfa asagi kaydiriliyor...');
+            console.log('>>> Ekrandaki ' + gorulenTweetler.length + ' tweet kontrol edildi');
+            console.log('>>> Atlanan: ' + atlanmaSayisi);
+            
+            // Eger hepsi atlandiysa, daha fazla kaydir
+            if (atlanmaSayisi === gorulenTweetler.length) {
+                console.log('>>> TUM TWEETLER BEGENILMIS! Daha fazla asagi kaydiriliyor...');
+                const buyukKaydir = 1200 + Math.floor(Math.random() * 400);
+                console.log('--- Smooth scroll yapiliyor (' + buyukKaydir + 'px) ---');
+                await smoothScroll(buyukKaydir);
+            } else {
+                console.log('>>> Yeni tweetler icin smooth scroll yapiliyor...');
+                const kaydirmaMiktari = 500 + Math.floor(Math.random() * 300);
+                console.log('--- Smooth scroll yapiliyor (' + kaydirmaMiktari + 'px) ---');
+                await smoothScroll(kaydirmaMiktari);
+            }
+        } else {
+            // Tweet begendiyse kucuk bir scroll yap
+            console.log('');
+            console.log('--- Mini smooth scroll (yeni tweetler icin) ---');
+            const miniKaydir = 200 + Math.floor(Math.random() * 200);
+            await smoothScroll(miniKaydir);
         }
-        
-        console.log('');
-        console.log('--- Sayfa kaydiriliyor ---');
-        
-        // Sayfayi rastgele miktarda kaydir
-        const kaydirmaMiktari = Math.floor(Math.random() * 400) + 600;
-        window.scrollBy(0, kaydirmaMiktari);
         
         // Rastgele bekleme
         const beklemeSuresi = rastgeleSure(3, 7);
@@ -211,4 +269,4 @@ async function tweetleriBegen() {
 // Scripti baslat
 tweetleriBegen();
 
-// Durdurmak icin: calisiyor = false
+// Durdurmak icin konsola yaz: calisiyor = false
