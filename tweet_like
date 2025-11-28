@@ -122,7 +122,7 @@ async function tweetleriBegen() {
     console.log('===========================================');
     console.log('✓ Smooth scroll aktif (insan benzeri)');
     console.log('✓ Ekrandaki tweetler oncelikli');
-    console.log('✓ Bekleme: 3-7 saniye rastgele');
+    console.log('✓ Bekleme: 10-15 saniye rastgele');
     console.log('✓ Her 10 begenide 30 saniye mola');
     console.log('Durdurmak icin: calisiyor = false');
     console.log('===========================================');
@@ -244,8 +244,8 @@ async function tweetleriBegen() {
             await smoothScroll(miniKaydir);
         }
         
-        // Rastgele bekleme
-        const beklemeSuresi = rastgeleSure(3, 7);
+        // Rastgele bekleme - 10-15 saniye arasi
+        const beklemeSuresi = rastgeleSure(10, 15);
         const saniye = (beklemeSuresi / 1000).toFixed(1);
         console.log('--- ' + saniye + ' saniye bekleniyor ---');
         console.log('');
